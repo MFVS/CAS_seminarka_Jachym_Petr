@@ -1,2 +1,2 @@
-# CAS_seminarka
-Seminární práce na Časové řady
+# KMA/CAS Seminárka
+
