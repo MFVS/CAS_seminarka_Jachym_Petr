@@ -1,7 +1,7 @@
 ---
 title: "Analýza nezaměstnanosti <br/> USA <br/> 1976–2023"
 author: "Jáchym Škoda | Petr Kotlan"
-date: "2023–05–15"
+date: "`r Sys.Date()`"
 output: 
   html_document:
     css: "custom_style.css"
@@ -69,7 +69,9 @@ us_plots <- function(dataset, avg_data, names){
             axis.text = element_text(size = rel(1)),
             legend.text = element_text(size = rel(1)),
             axis.title.x = element_blank(),
-            axis.title.y = element_text(size = rel(1))) +
+            axis.title.y = element_text(size = rel(1)),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank()) +
       geom_line(data = df, aes(x = date, y = value, color = state.abb[i]), linewidth = 0.65) +
       scale_color_manual(values = c("#91bfec", "#f86d3a"), 
                          guide = guide_legend(title = "", override.aes = list(size = 1.5)),
@@ -181,12 +183,15 @@ index_plots <- function(dataset, names){
             axis.text = element_text(size = rel(1)),
             legend.text = element_text(size = rel(1)),
             axis.title.y = element_blank(),
-            axis.title.x = element_blank()) +
+            axis.title.x = element_blank(),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank()) +
       geom_line(data = df[-1,], aes(x = date, y = retezovy_index, color = "Řetězový index"),
                 linewidth = 0.65) +
       scale_color_manual(values = c("#259932", "#e48326"), 
                          guide = guide_legend(title = "", override.aes = list(size = 1.5)),
-                         labels = c("Bazický index", "Řetězový index"))
+                         labels = c("Bazický index", "Řetězový index")) +
+      theme_minimal()
     plots[[i]] <- g
   }
   
@@ -196,6 +201,7 @@ index_plots <- function(dataset, names){
 
 
 ```{r grafy, include=FALSE}
+
 readRenviron(".env")
 api_key <- Sys.getenv("FREDR_API_KEY")
 fredr_set_key(api_key)
@@ -293,17 +299,17 @@ for(i in seq_along(complete_plots)){
 
 for (i in seq_along(state.abb)) {
   state_abb <- state.abb[i]
-  
+
   cat(paste0("<h3>", state.name[i], "</h3>"))
-  
+
   state_data <- dataset_ns_idx %>%
     filter(series_id == state_abb)
 
   state_data$date <- as.Date(state_data$date)
-  ts_decomp <- decompose(ts(state_data$value, frequency = 12))
-  
+  decomposition <- decompose(ts(state_data$value, frequency = 12))
 
-  plot(ts_decomp,col = "#055069", pch = 19, xlab="Čas")
+
+  plot(decomposition,col = "#055069", pch = 19, xlab="Čas")
   cat("<br><br>")
 }
 ```
@@ -316,18 +322,18 @@ for (i in seq_along(state.abb)) {
 
 for (i in seq_along(state.abb)) {
   state_abb <- state.abb[i]
-  
+
   cat(paste0("<h3>", state.name[i], "</h3>"))
   state_data <- dataset_ns_idx %>%
     filter(series_id == state_abb)
-  
+
 
   state_data$date <- as.Date(state_data$date)
     arima_model <- auto.arima(state_data$value)
-  
+
 
   forecast_values <- forecast(arima_model, h = 12, level = c(99.5))
 
   plot(forecast_values,col = "#055069", xlab="Čas")
-  cat("<br><br>")
 }
+```

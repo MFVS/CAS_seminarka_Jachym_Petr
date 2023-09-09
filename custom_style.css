@@ -1,6 +1,11 @@
+div.main-container {
+    max-width: 1920px !important;
+}
+
 h1 {
     padding: 60px;
     text-align: center;
+    font-weight: bolder;
     background: #2c3e50;
     color: white;
     font-size: 30px;
@@ -8,7 +13,7 @@ h1 {
   }
   
 h2 {
-    font-size: 1.6em;
+    font-size: 20px;
     font-weight: bolder;
     text-align: center;
     background: #2c3e50;
@@ -18,7 +23,17 @@ h2 {
 }
 
 h3{
-    font-size: 1.3em;
+    font-size: 20px;
     font-weight: bolder;
     color: #2c3e50;
+}
+
+h4.author {
+    text-align: center;
+    font-weight: bolder;
+}
+
+h4.date {
+    text-align: center;
+    font-weight: bolder;
 }
