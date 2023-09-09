@@ -24,5 +24,7 @@ Seminární práce musí obsahovat:
 ## TODO
 
 * Zdroje
-* Indexní analýzu
+* Indexní analýza
+* Osy grafů
+* Porovnání mezi pohlavím, etnicita ...
 * INTERPRETACE
