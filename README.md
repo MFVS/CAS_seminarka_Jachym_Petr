@@ -1,7 +1,17 @@
 # KMA/CAS Seminárka
 
-# TODO
+Analýza nezaměstnanosti v USA.
 
-* Popis
+Seminární práce musí obsahovat:
+
+* Jednoduchý popis
+* Indexní analýzu
+* Dekompozice časové řady
+* Predikce pomocí ARIMA/SARIMA modelů
+* Interpretace
+
+## TODO
+
 * Zdroje
-* TODO :)
+* Indexní analýzu
+* INTERPRETACE
