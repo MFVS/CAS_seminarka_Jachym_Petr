@@ -6,7 +6,8 @@ output:
   html_document:
     css: "custom_style.css"
     theme: flatly
-    toc: yes
+    toc: true
+    toc_depth: 2
     toc_float:
       collapsed: true
 ---
@@ -17,7 +18,7 @@ knitr::opts_chunk$set(
   echo = FALSE,
   fig.width = 12,
   height = 6
-  )
+)
 ```
 
 ```{r knihovny, include=FALSE}
@@ -36,13 +37,13 @@ library(choroplethrMaps)
 ```{r funkce, include=FALSE}
 
 # Kartogram
-create_map <- function(spec_date){
+create_map <- function(spec_date) {
   values <- subset(dataset, date == spec_date)
-  values <- values[,3]
+  values <- values[, 3]
   map_data <- data.frame(region = tolower(state.name), value = values)
   map_data <- rbind(map_data, c("district of columbia", 5))
   map_data$value <- as.numeric(map_data$value)
-  
+
   map <- state_choropleth(
     map_data,
     title = paste("Nezaměstnanost ve Spojených státech amerických –", spec_date),
@@ -50,151 +51,166 @@ create_map <- function(spec_date){
     num_colors = 7,
     zoom = NULL,
     reference_map = FALSE
-    )
-  
+  )
+
   return(map)
 }
 
 ### Jednotlive staty – vyvoj v case a porovnani s prumerem USA
-us_plots <- function(dataset, avg_data, names){
+us_plots <- function(dataset, avg_data, names) {
   plots <- list()
-  for(i in seq_along(state.abb)){
+  for (i in seq_along(state.abb)) {
     df <- dataset |> filter(dataset["series_id"] == state.abb[i])
     g <- ggplot() +
       geom_line(data = avg_data, aes(x = date, y = value, color = "US"), linewidth = 0.65) +
-      labs(title = names, color="") + ylab("Nezaměstnanost (%)") +
-      theme(plot.title = element_text(size = rel(1.3), hjust = 0.5),
-            legend.title = element_blank(),
-            axis.title = element_text(size = rel(1)), 
-            axis.text = element_text(size = rel(1)),
-            legend.text = element_text(size = rel(1)),
-            axis.title.x = element_blank(),
-            axis.title.y = element_text(size = rel(1)),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank()) +
+      labs(title = names, color = "") +
+      ylab("Nezaměstnanost (%)") +
+      theme(
+        plot.title = element_text(size = rel(1.3), hjust = 0.5),
+        legend.title = element_blank(),
+        axis.title = element_text(size = rel(1)),
+        axis.text = element_text(size = rel(1)),
+        legend.text = element_text(size = rel(1)),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = rel(1))
+      ) +
       geom_line(data = df, aes(x = date, y = value, color = state.abb[i]), linewidth = 0.65) +
-      scale_color_manual(values = c("#91bfec", "#f86d3a"), 
-                         guide = guide_legend(title = "", override.aes = list(size = 1.5)),
-                         labels = c("US", state.abb[i])) +
-      theme_minimal()
+      scale_color_manual(
+        values = c("#91bfec", "#f86d3a"),
+        guide = guide_legend(
+          title = "",
+          override.aes = list(size = 1.5)
+        ),
+        labels = c("US", state.abb[i])
+      ) +
+      scale_x_date(date_breaks = "5 years", date_labels = "%Y") +
+      theme_classic()
     plots[[i]] <- g
   }
-  
+
   return(plots)
 }
 
 ### Vyvoj v case a porovnani s prumerem USA – ocisteno od sezonnosti
-deseason <- function(dataset){
-  tseries <- ts(dataset$value, frequency=12, start=c(1976, 1))
+deseason <- function(dataset) {
+  tseries <- ts(dataset$value, frequency = 12, start = c(1976, 1))
   components <- decompose(tseries)
   clean_tseries <- components$x - components$seasonal
   clean_tseries <- round(clean_tseries, 1)
-  
+
   new_values <- data.frame(as.numeric(clean_tseries))
   colnames(new_values) <- c("value")
-  
+
   return(new_values)
 }
 
 ### Indexova analyza
-index_analysis <- function(dataset){
-  
+index_analysis <- function(dataset) {
   # Bazicky index
-  bazicky_idx <- function(data){
+  bazicky_idx <- function(data) {
     value <- t(data$value)
     b_idx <- c()
-    for(i in seq_along(value)){
-      b_idx <- c(b_idx, value[i]/value[1])
+    for (i in seq_along(value)) {
+      b_idx <- c(b_idx, value[i] / value[1])
     }
-    data <- cbind(data, round(100*b_idx, 2))
+    data <- cbind(data, round(100 * b_idx, 2))
     return(data)
   }
-  
+
   # Retezovy index
-  retez_idx <- function(data){
+  retez_idx <- function(data) {
     value <- t(data$value)
     r_idx <- c()
-    for(i in seq_along(value)){
-      if(i==1){
+    for (i in seq_along(value)) {
+      if (i == 1) {
         r_idx <- c(r_idx, NA)
-      }
-      else{
-        r_idx <- c(r_idx, value[i]/value[i-1])
+      } else {
+        r_idx <- c(r_idx, value[i] / value[i - 1])
       }
     }
-    data <- cbind(data, round(100*r_idx, 2))
+    data <- cbind(data, round(100 * r_idx, 2))
     return(data)
   }
-  
+
   # 1. diference
-  diference1 <- function(data){
+  diference1 <- function(data) {
     value <- t(data$value)
     diff1 <- c()
-    for(i in seq_along(value)){
-      if(i==1){
+    for (i in seq_along(value)) {
+      if (i == 1) {
         diff1 <- c(diff1, NA)
-      }
-      else{
-        diff1 <- c(diff1, value[i]-value[i-1])
+      } else {
+        diff1 <- c(diff1, value[i] - value[i - 1])
       }
     }
     data <- cbind(data, diff1)
     return(data)
   }
-  
+
   # 2. diference
-  diference2 <- function(data){
+  diference2 <- function(data) {
     value <- t(data$diff1)
     diff2 <- c()
-    for(i in seq_along(value)){
-      if(i==1|i==2){
+    for (i in seq_along(value)) {
+      if (i == 1 | i == 2) {
         diff2 <- c(diff2, NA)
-      }
-      else{
-        diff2 <- c(diff2, value[i]-value[i-1])
+      } else {
+        diff2 <- c(diff2, value[i] - value[i - 1])
       }
     }
     data <- cbind(data, diff2)
     return(data)
   }
-  
-  names <- function(data){
-    colnames(data) <- c("date", "series_id", "value", "bazicky_index", "retezovy_index",
-                        "1_diference", "2_diference")
+
+  names <- function(data) {
+    colnames(data) <- c(
+      "date", "series_id", "value", "bazicky_index", "retezovy_index",
+      "1_diference", "2_diference"
+    )
     return(data)
   }
-  
+
   idx_dataset <- names(diference2(diference1(retez_idx(bazicky_idx(dataset)))))
-  
+
   return(idx_dataset)
 }
 
-index_plots <- function(dataset, names){
+index_plots <- function(dataset, names) {
   plots <- list()
-  for (i in seq_along(state.abb)){
+  for (i in seq_along(state.abb)) {
     df <- dataset |> filter(dataset["series_id"] == state.abb[i])
     g <- ggplot() +
-      geom_line(data = df, aes(x = date, y = bazicky_index, color = "Bazický index"),
-                linewidth = 0.65) +
-      labs(title = names, color="") +
-      theme(plot.title = element_text(size = rel(1.3), hjust = 0.5),
-            legend.title = element_blank(),
-            axis.title = element_text(size = rel(1)), 
-            axis.text = element_text(size = rel(1)),
-            legend.text = element_text(size = rel(1)),
-            axis.title.y = element_blank(),
-            axis.title.x = element_blank(),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank()) +
-      geom_line(data = df[-1,], aes(x = date, y = retezovy_index, color = "Řetězový index"),
-                linewidth = 0.65) +
-      scale_color_manual(values = c("#259932", "#e48326"), 
-                         guide = guide_legend(title = "", override.aes = list(size = 1.5)),
-                         labels = c("Bazický index", "Řetězový index")) +
-      theme_minimal()
+      geom_line(
+        data = df, aes(x = date, y = bazicky_index, color = "Bazický index"),
+        linewidth = 0.65
+      ) +
+      labs(title = names, color = "") +
+      theme(
+        plot.title = element_text(size = rel(1.3), hjust = 0.5),
+        legend.title = element_blank(),
+        axis.title = element_text(size = rel(1)),
+        axis.text = element_text(size = rel(1)),
+        legend.text = element_text(size = rel(1)),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank()
+      ) +
+      geom_line(
+        data = df[-1, ], aes(x = date, y = retezovy_index, color = "Řetězový index"),
+        linewidth = 0.65
+      ) +
+      scale_color_manual(
+        values = c("#259932", "#e48326"),
+        guide = guide_legend(
+          title = "",
+          override.aes = list(size = 1.5)
+        ),
+        labels = c("Bazický index", "Řetězový index")
+      ) +
+      scale_x_date(date_breaks = "5 years", date_labels = "%Y") +
+      theme_classic()
     plots[[i]] <- g
   }
-  
+
   return(plots)
 }
 ```
@@ -203,19 +219,19 @@ index_plots <- function(dataset, names){
 ```{r grafy, include=FALSE}
 
 readRenviron(".env")
-api_key <- Sys.getenv("FREDR_API_KEY")
+api_key <- Sys.getenv("FRED_API_KEY")
 fredr_set_key(api_key)
 
 ### Spojene staty – USA prumer
-usur <- fredr("UNRATENSA")[-1:-336,1:3] # od roku 1976
+usur <- fredr("UNRATENSA")[-1:-336, 1:3] # od roku 1976
 
 
 
 ### Jednotlive staty
 
 dataset <- data.frame()
-for(state in state.abb){
-  dataset <- rbind(dataset, fredr(paste0(state, "URN"))[,1:3])
+for (state in state.abb) {
+  dataset <- rbind(dataset, fredr(paste0(state, "URN"))[, 1:3])
 }
 
 dataset$series_id <- gsub("urn", "", dataset$series_id, ignore.case = TRUE)
@@ -228,7 +244,7 @@ dataset <- na.omit(dataset)
 dates <- c("1976-01-01", "2000-01-01", "2020-04-01", "2023-03-01")
 
 maps <- list()
-for(date in dates){
+for (date in dates) {
   maps[[date]] <- create_map(date)
 }
 
@@ -239,17 +255,17 @@ for(date in dates){
 split_levels <- factor(dataset$series_id, levels = unique(dataset$series_id))
 states_sep <- split(dataset, split_levels)
 values_ns <- c()
-for(state in states_sep){
+for (state in states_sep) {
   values_ns <- rbind(values_ns, deseason(state))
 }
 
-dataset_ns <- cbind(dataset[,1:2], values_ns)
-usur_ns <- cbind(usur[,1:2], deseason(usur))
+dataset_ns <- cbind(dataset[, 1:2], values_ns)
+usur_ns <- cbind(usur[, 1:2], deseason(usur))
 
 
 states_sep_ns <- split(dataset_ns, dataset_ns$series_id)
 dataset_ns_idx <- c()
-for(state in states_sep){
+for (state in states_sep) {
   dataset_ns_idx <- rbind(dataset_ns_idx, index_analysis(state))
 }
 
@@ -271,7 +287,7 @@ idx_plots <- index_plots(dataset_ns_idx, names_idx)
 
 ## Kartogramy nezaměstnanosti
 ```{r kartogramy, results='asis'}
-for(map in map_plots){
+for (map in map_plots) {
   cat("<br><br>")
   print(map)
   cat("<br><br>")
@@ -282,11 +298,11 @@ for(map in map_plots){
 
 ## Vývoj nezaměstnanosti v jednotlivých státech
 ```{r plots, results='asis'}
-for(i in seq_along(complete_plots)){
+for (i in seq_along(complete_plots)) {
   cat("<br><br>")
   header <- paste("<h3>", state.name[i], "</h3>")
   cat(header)
-  grid.arrange(complete_plots[[i]], ns_plots[[i]], idx_plots[[i]], ncol=2)
+  grid.arrange(complete_plots[[i]], ns_plots[[i]], idx_plots[[i]], ncol = 2)
   cat("<br><br>")
 }
 ```
@@ -309,7 +325,7 @@ for (i in seq_along(state.abb)) {
   decomposition <- decompose(ts(state_data$value, frequency = 12))
 
 
-  plot(decomposition,col = "#055069", pch = 19, xlab="Čas")
+  plot(decomposition, col = "#055069", pch = 19, xlab = "Čas")
   cat("<br><br>")
 }
 ```
@@ -329,11 +345,11 @@ for (i in seq_along(state.abb)) {
 
 
   state_data$date <- as.Date(state_data$date)
-    arima_model <- auto.arima(state_data$value)
+  arima_model <- auto.arima(state_data$value)
 
 
   forecast_values <- forecast(arima_model, h = 12, level = c(99.5))
 
-  plot(forecast_values,col = "#055069", xlab="Čas")
+  plot(forecast_values, col = "#055069", xlab = "Čas")
 }
 ```
