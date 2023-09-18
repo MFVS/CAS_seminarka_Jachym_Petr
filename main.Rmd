@@ -7,7 +7,7 @@ output:
     css: "custom_style.css"
     theme: flatly
     toc: true
-    toc_depth: 2
+    toc_depth: 3
     toc_float:
       collapsed: true
 ---
@@ -285,7 +285,9 @@ idx_plots <- index_plots(dataset_ns_idx, names_idx)
 
 <br>
 
-## Kartogramy nezaměstnanosti
+## USA souhrn
+
+### Kartogramy nezaměstnanosti
 ```{r kartogramy, results='asis'}
 for (map in map_plots) {
   cat("<br><br>")
@@ -296,11 +298,37 @@ for (map in map_plots) {
 
 <br>
 
+### Autokorelace
+
+```{r autocor, results='asis'}
+
+plot(acf(usur$value,lag=6,pl=TRUE))
+plot(acf(usur$value,lag=12,pl=TRUE))
+plot(acf(usur$value,lag=24,pl=TRUE))
+
+
+```
+
+<br>
+
+### Dekompozice
+
+```{r decomposition, results='asis'}
+
+decomposition <- decompose(ts(usur$value, frequency = 12))
+
+plot(decomposition, col = "#055069", pch = 19, xlab = "Čas")
+
+```
+
+
+<br>
+
 ## Vývoj nezaměstnanosti v jednotlivých státech
 ```{r plots, results='asis'}
 for (i in seq_along(complete_plots)) {
   cat("<br><br>")
-  header <- paste("<h3>", state.name[i], "</h3>")
+  header <- paste("<h3'>", state.name[i], "</h3>")
   cat(header)
   grid.arrange(complete_plots[[i]], ns_plots[[i]], idx_plots[[i]], ncol = 2)
   cat("<br><br>")
@@ -309,61 +337,47 @@ for (i in seq_along(complete_plots)) {
 
 <br>
 
-## Autokorelace
+<!-- ## Dekompozice -->
 
-```{r autocor, results='asis'}
+<!-- ```{r dekompozice, results='asis'} -->
 
-plot(acf(usur$value,lag=6,pl=TRUE), title(main = "Měsiční autokorelace", ylab = "Korelační koeficient", xlab = "Časová perioda"))
-plot(acf(usur$value,lag=12,pl=TRUE), title(main = "Roční autokorelace", ylab = "Korelační koeficient", xlab = "Časová perioda"))
-plot(acf(usur$value,lag=24,pl=TRUE), title(main = "Dvouletá autokorelace", ylab = "Korelační koeficient", xlab = "Časová perioda"))
+<!-- for (i in seq_along(state.abb)) { -->
+<!--   state_abb <- state.abb[i] -->
 
+<!--   cat(paste0("<h3>", state.name[i], "</h3>")) -->
 
-```
+<!--   state_data <- dataset_ns_idx %>% -->
+<!--     filter(series_id == state_abb) -->
 
-
-<br>
-
-## Dekompozice
-
-```{r dekompozice, results='asis'}
-
-for (i in seq_along(state.abb)) {
-  state_abb <- state.abb[i]
-
-  cat(paste0("<h3>", state.name[i], "</h3>"))
-
-  state_data <- dataset_ns_idx %>%
-    filter(series_id == state_abb)
-
-  state_data$date <- as.Date(state_data$date)
-  decomposition <- decompose(ts(state_data$value, frequency = 12))
+<!--   state_data$date <- as.Date(state_data$date) -->
+<!--   decomposition <- decompose(ts(state_data$value, frequency = 12)) -->
 
 
-  plot(decomposition, col = "#055069", pch = 19, xlab = "Čas")
-  cat("<br><br>")
-}
-```
+<!--   plot(decomposition, col = "#055069", pch = 19, xlab = "Čas") -->
+<!--   cat("<br><br>") -->
+<!-- } -->
+<!-- ``` -->
 
-<br>
+<!-- <br> -->
 
-## Predikce
+<!-- ## Predikce -->
 
-```{r arima, results='asis'}
+<!-- ```{r arima, results='asis'} -->
 
-for (i in seq_along(state.abb)) {
-  state_abb <- state.abb[i]
+<!-- for (i in seq_along(state.abb)) { -->
+<!--   state_abb <- state.abb[i] -->
 
-  cat(paste0("<h3>", state.name[i], "</h3>"))
-  state_data <- dataset_ns_idx %>%
-    filter(series_id == state_abb)
-
-
-  state_data$date <- as.Date(state_data$date)
-  arima_model <- auto.arima(state_data$value)
+<!--   cat(paste0("<h3>", state.name[i], "</h3>")) -->
+<!--   state_data <- dataset_ns_idx %>% -->
+<!--     filter(series_id == state_abb) -->
 
 
-  forecast_values <- forecast(arima_model, h = 12, level = c(99.5))
+<!--   state_data$date <- as.Date(state_data$date) -->
+<!--   arima_model <- auto.arima(state_data$value) -->
 
-  plot(forecast_values, col = "#055069", xlab = "Čas")
-}
-```
+
+<!--   forecast_values <- forecast(arima_model, h = 12, level = c(99.5)) -->
+
+<!--   plot(forecast_values, col = "#055069", xlab = "Čas") -->
+<!-- } -->
+<!-- ``` -->

@@ -2,6 +2,11 @@ div.main-container {
     max-width: 1920px !important;
 }
 
+img {
+    display: block;
+    margin: 0 auto;
+  }
+
 h1 {
     padding: 60px;
     text-align: center;
