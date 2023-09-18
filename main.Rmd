@@ -309,6 +309,20 @@ for (i in seq_along(complete_plots)) {
 
 <br>
 
+## Autokorelace
+
+```{r autocor, results='asis'}
+
+plot(acf(usur$value,lag=6,pl=TRUE), title(main = "Měsiční autokorelace", ylab = "Korelační koeficient", xlab = "Časová perioda"))
+plot(acf(usur$value,lag=12,pl=TRUE), title(main = "Roční autokorelace", ylab = "Korelační koeficient", xlab = "Časová perioda"))
+plot(acf(usur$value,lag=24,pl=TRUE), title(main = "Dvouletá autokorelace", ylab = "Korelační koeficient", xlab = "Časová perioda"))
+
+
+```
+
+
+<br>
+
 ## Dekompozice
 
 ```{r dekompozice, results='asis'}
