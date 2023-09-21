@@ -32,6 +32,8 @@ library(gridExtra)
 library(plotly)
 library(choroplethr)
 library(choroplethrMaps)
+library(knitr)
+library(kableExtra)
 ```
 
 ```{r funkce, include=FALSE}
@@ -54,6 +56,16 @@ create_map <- function(spec_date) {
   )
 
   return(map)
+}
+
+# Zkratka na jmeno
+replace_abbreviations <- function(abbreviation) {
+  matching_name <- state.name[state.abb == abbreviation]
+  if (length(matching_name) > 0) {
+    return(matching_name)
+  } else {
+    return(abbreviation)
+  }
 }
 
 ### Jednotlive staty – vyvoj v case a porovnani s prumerem USA
@@ -287,6 +299,11 @@ idx_plots <- index_plots(dataset_ns_idx, names_idx)
 
 ## USA souhrn
 
+<p style="padding-left: 10px; padding-right: 10px;">
+  V průběhu roku dochází k výkyvům v počtu pracovních sil, míře zaměstnanosti a nezaměstnanosti a dalších ukazatelích aktivity na trhu práce v důsledku sezónních jevů, jako jsou změny počasí, sklizně, významné svátky a začátek/konec školního roku.
+Vzhledem k tomu, že tyto sezónní události se každý rok opakují víceméně pravidelně, lze jejich vliv na statistické trendy eliminovat sezónní úpravou statistik v jednotlivých měsících. Tyto sezónní úpravy usnadňují pozorování cyklických, základních trendů a dalších nesezónních pohybů v řadách.
+</p>
+
 ### Kartogramy nezaměstnanosti
 ```{r kartogramy, results='asis'}
 for (map in map_plots) {
@@ -313,71 +330,178 @@ plot(acf(usur$value,lag=24,pl=TRUE))
 
 ### Dekompozice
 
-```{r decomposition, results='asis'}
+```{r decomposition, results='asis', echo=FALSE, warning=FALSE}
 
 decomposition <- decompose(ts(usur$value, frequency = 12))
 
-plot(decomposition, col = "#055069", pch = 19, xlab = "Čas")
+decomposition_df <- data.frame(
+  Date = usur$date,
+  Trend = decomposition$trend,
+  Seasonal = decomposition$seasonal,
+  Random = decomposition$random
+)
+
+plots <- list(
+  ggplot(usur, aes(date, value)) +
+    geom_line(color = "black") +
+    labs(title = "Původní časová řada", y = "Nezaměstnanost (%)") +
+    theme_classic(),
+
+  ggplot(decomposition_df, aes(Date, Trend)) +
+    geom_line(color = "blue") +
+    labs(title = "Trend", y = "Nezaměstnanost (%)") +
+    theme_classic(),
+
+  ggplot(decomposition_df, aes(Date, Seasonal)) +
+    geom_line(color = "red") +
+    labs(title = "Sezónní složka", y = "Nezaměstnanost (%)") +
+    theme_classic(),
+
+  ggplot(decomposition_df, aes(Date, Random)) +
+    geom_line(color = "green") +
+    labs(title = "Náhodná složka", y = "Nezaměstnanost (%)") +
+    theme_classic()
+)
+
+grid.arrange(grobs = plots, ncol = 2)
+
 
 ```
 
+<br>
+
+``` {r arima, results='asis'}
+
+arima_model <- auto.arima(usur$value)
+
+
+forecast_values <- forecast(arima_model, h = 12, level = c(99.5))
+
+plot(forecast_values, col = "#055069", xlab = "Čas")
+
+```
+
+<br>
+
+### Porovnání mužů a žen
+
+```{r comparison, results='asis'}
+
+women <- fredr("LNS14000002")
+men <- fredr("LNS14000001")
+
+start_date <- as.Date("1976-01-01")
+end_date <- as.Date("2023-12-31")
+
+women <- subset(women, date >= start_date & date <= end_date)
+men <- subset(men, date >= start_date & date <= end_date)
+
+ggplot() +
+    geom_line(data = women, aes(x = date, y = value, color = "Ž"), linewidth = 1) +
+    geom_line(data = men, aes(x = date, y = value, color = "M"), linewidth = 1) +
+    labs(
+        x = "Rok",
+        y = "Nezaměstnanost (%)"
+    ) +
+    theme_classic()
+```
+
+<hr class="solid" style="color: #2c3e50; height: 3px;">
+<br>
+
+## Vývoj nezaměstnanosti v jednotlivých státech
+
+### Recese na počátku 80. let (1981-1982)
+
+Na konci roku 1982 dosáhla nezaměstnanost vrcholu kolem **10,8 %**.
+
+```{r 1982, results='asis'}
+
+dataset$series_id <- sapply(dataset$series_id, replace_abbreviations)
+
+df_1982 <- dataset[dataset$date >= as.Date("1982-01-01") & dataset$date <= as.Date("1982-12-31"), ]
+
+
+max_values_1982 <- df_1982 %>%
+    group_by(series_id) %>%
+    summarise(max_value = max(value, na.rm = TRUE))
+
+max_values_1982_sorted <- max_values_1982 %>%
+    arrange(desc(max_value))
+
+max_values_1982_sorted <- max_values_1982_sorted %>%
+  mutate(series_id = replace_abbreviations(series_id))
+
+colnames(max_values_1982_sorted) <- c("Stát", "Nezamněstnanost (%)")
+
+kable(head(max_values_1982_sorted), align = "cc") %>% kable_styling()
+
+
+```
+
+Mnoho států, zejména těch, které jsou silně závislé na zpracovatelském a těžkém průmyslu, bylo výrazně postiženo. Státy jako **Západní Virginie (18,1 %)**, **Michigan (16,8 %)** a **Alabama (14,8 %)** zaznamenaly obzvláště vysokou míru nezaměstnanosti.
+
+### Finanční krize a velká recese (2008-2009)
+
+V říjnu 2009 dosáhla nezaměstnanost přibližně **10 %**.
+
+```{r 2009, results='asis'}
+
+df_2008 <- dataset[dataset$date >= as.Date("2009-01-01") & dataset$date <= as.Date("2009-12-31"), ]
+
+
+max_values_2008 <- df_2008 %>%
+    group_by(series_id) %>%
+    summarise(max_value = max(value, na.rm = TRUE))
+
+max_values_2008_sorted <- max_values_2008 %>%
+    arrange(desc(max_value))
+
+colnames(max_values_2008_sorted) <- c("Stát", "Nezamněstnanost (%)")
+
+
+kable(head(max_values_2008_sorted), align = "cc") %>% kable_styling()
+
+
+```
+Mezi nejvíce postižené státy patřily **Michigan (14,6 %)**, **Nevada (13 %)** a **Oregon (12,3 %)**. Zejména kvůli závislosti na cestovním ruchu a stavebnictví.
+
+
+### Pandemie COVID-19 (2020)
+
+V dubnu 2020 dosáhla nezaměstnanost téměř **15 %**.
+
+```{r 2020, results='asis'}
+
+df_2020 <- dataset[dataset$date >= as.Date("2020-01-01") & dataset$date <= as.Date("2020-12-31"), ]
+
+max_values_2020 <- df_2020 %>%
+    group_by(series_id) %>%
+    summarise(max_value = max(value, na.rm = TRUE))
+
+max_values_2020_sorted <- max_values_2020 %>%
+    arrange(desc(max_value))
+
+colnames(max_values_2020_sorted) <- c("Stát", "Nezamněstnanost (%)")
+
+
+kable(head(max_values_2020_sorted), align = "cc") %>% kable_styling()
+
+
+```
+
+Pandemie zasáhla všechny státy, ale státy s velkým cestovním ruchem a pohostinstvím, jako je **Nevada (30,6 %)**, **Michigan (22,6 %)** a **Hawaii (14,1s %)**, byly obzvláště postiženy. 
 
 <br>
 
 ## Vývoj nezaměstnanosti v jednotlivých státech
+
 ```{r plots, results='asis'}
 for (i in seq_along(complete_plots)) {
   cat("<br><br>")
-  header <- paste("<h3'>", state.name[i], "</h3>")
+  header <- paste("<h3>", state.name[i], "</h3>")
   cat(header)
   grid.arrange(complete_plots[[i]], ns_plots[[i]], idx_plots[[i]], ncol = 2)
   cat("<br><br>")
 }
 ```
-
-<br>
-
-<!-- ## Dekompozice -->
-
-<!-- ```{r dekompozice, results='asis'} -->
-
-<!-- for (i in seq_along(state.abb)) { -->
-<!--   state_abb <- state.abb[i] -->
-
-<!--   cat(paste0("<h3>", state.name[i], "</h3>")) -->
-
-<!--   state_data <- dataset_ns_idx %>% -->
-<!--     filter(series_id == state_abb) -->
-
-<!--   state_data$date <- as.Date(state_data$date) -->
-<!--   decomposition <- decompose(ts(state_data$value, frequency = 12)) -->
-
-
-<!--   plot(decomposition, col = "#055069", pch = 19, xlab = "Čas") -->
-<!--   cat("<br><br>") -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- <br> -->
-
-<!-- ## Predikce -->
-
-<!-- ```{r arima, results='asis'} -->
-
-<!-- for (i in seq_along(state.abb)) { -->
-<!--   state_abb <- state.abb[i] -->
-
-<!--   cat(paste0("<h3>", state.name[i], "</h3>")) -->
-<!--   state_data <- dataset_ns_idx %>% -->
-<!--     filter(series_id == state_abb) -->
-
-
-<!--   state_data$date <- as.Date(state_data$date) -->
-<!--   arima_model <- auto.arima(state_data$value) -->
-
-
-<!--   forecast_values <- forecast(arima_model, h = 12, level = c(99.5)) -->
-
-<!--   plot(forecast_values, col = "#055069", xlab = "Čas") -->
-<!-- } -->
-<!-- ``` -->
