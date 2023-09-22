@@ -34,6 +34,7 @@ library(choroplethr)
 library(choroplethrMaps)
 library(knitr)
 library(kableExtra)
+options(warn = -1)
 ```
 
 ```{r funkce, include=FALSE}
@@ -77,6 +78,7 @@ us_plots <- function(dataset, avg_data, names) {
       geom_line(data = avg_data, aes(x = date, y = value, color = "US"), linewidth = 0.65) +
       labs(title = names, color = "") +
       ylab("Nezaměstnanost (%)") +
+      xlab("Datum") +
       theme(
         plot.title = element_text(size = rel(1.3), hjust = 0.5),
         legend.title = element_blank(),
@@ -203,8 +205,8 @@ index_plots <- function(dataset, names) {
         axis.title = element_text(size = rel(1)),
         axis.text = element_text(size = rel(1)),
         legend.text = element_text(size = rel(1)),
-        axis.title.y = element_blank(),
-        axis.title.x = element_blank()
+        axis.title.y = "Řetězový index",
+        axis.title.x = "Datum"
       ) +
       geom_line(
         data = df[-1, ], aes(x = date, y = retezovy_index, color = "Řetězový index"),
@@ -317,11 +319,26 @@ for (map in map_plots) {
 
 ### Autokorelace
 
-```{r autocor, results='asis'}
+```{r autocor, results='asis', echo=FALSE}
 
-plot(acf(usur$value,lag=6,pl=TRUE))
-plot(acf(usur$value,lag=12,pl=TRUE))
-plot(acf(usur$value,lag=24,pl=TRUE))
+ts_data <- usur$value
+
+lags <- c(6, 12, 24)
+acf_results <- lapply(lags, function(lag) {
+  acf_result <- acf(ts_data, lag.max = lag, plot = FALSE)
+  acf_data <- data.frame(lag = acf_result$lag, acf = acf_result$acf)
+  return(acf_data)
+})
+
+
+for (i in 1:length(lags)) {
+  g <- ggplot(acf_results[[i]], aes(x = lag, y = acf)) +
+    geom_bar(stat = "identity", fill = "skyblue") +
+    labs(title = paste("Autokorelace -", lags[i], ifelse(lags[i] == 1, "rok", "měsíců"))) +
+    labs(x = "Perioda", y = "Autokorelační koeficient") +
+    theme_classic()
+  plot(g)
+}
 
 
 ```
@@ -330,7 +347,7 @@ plot(acf(usur$value,lag=24,pl=TRUE))
 
 ### Dekompozice
 
-```{r decomposition, results='asis', echo=FALSE, warning=FALSE}
+```{r decomposition, results='asis', echo=FALSE, warning=FALSE, message=FALSE}
 
 decomposition <- decompose(ts(usur$value, frequency = 12))
 
@@ -344,17 +361,17 @@ decomposition_df <- data.frame(
 plots <- list(
   ggplot(usur, aes(date, value)) +
     geom_line(color = "black") +
-    labs(title = "Původní časová řada", y = "Nezaměstnanost (%)") +
+    labs(title = "Původní časová řada", y = "Nezaměstnanost (%)", x="Datum") +
     theme_classic(),
 
   ggplot(decomposition_df, aes(Date, Trend)) +
     geom_line(color = "blue") +
-    labs(title = "Trend", y = "Nezaměstnanost (%)") +
+    labs(title = "Trend", y = "Nezaměstnanost (%)", x="Datum") +
     theme_classic(),
 
   ggplot(decomposition_df, aes(Date, Seasonal)) +
     geom_line(color = "red") +
-    labs(title = "Sezónní složka", y = "Nezaměstnanost (%)") +
+    labs(title = "Sezónní složka", y = "Nezaměstnanost (%)", x="Datum") +
     theme_classic(),
 
   ggplot(decomposition_df, aes(Date, Random)) +
@@ -370,6 +387,8 @@ grid.arrange(grobs = plots, ncol = 2)
 
 <br>
 
+### ARIMA
+
 ``` {r arima, results='asis'}
 
 arima_model <- auto.arima(usur$value)
@@ -377,7 +396,7 @@ arima_model <- auto.arima(usur$value)
 
 forecast_values <- forecast(arima_model, h = 12, level = c(99.5))
 
-plot(forecast_values, col = "#055069", xlab = "Čas")
+plot(forecast_values, col = "#055069", xlab = "Čas", main="")
 
 ```
 
@@ -397,8 +416,8 @@ women <- subset(women, date >= start_date & date <= end_date)
 men <- subset(men, date >= start_date & date <= end_date)
 
 ggplot() +
-    geom_line(data = women, aes(x = date, y = value, color = "Ž"), linewidth = 1) +
-    geom_line(data = men, aes(x = date, y = value, color = "M"), linewidth = 1) +
+    geom_line(data = women, aes(x = date, y = value, color = "Ž"), size = 1.5) +
+    geom_line(data = men, aes(x = date, y = value, color = "M"), size = 1.5) +
     labs(
         x = "Rok",
         y = "Nezaměstnanost (%)"
@@ -490,11 +509,9 @@ kable(head(max_values_2020_sorted), align = "cc") %>% kable_styling()
 
 ```
 
-Pandemie zasáhla všechny státy, ale státy s velkým cestovním ruchem a pohostinstvím, jako je **Nevada (30,6 %)**, **Michigan (22,6 %)** a **Hawaii (14,1s %)**, byly obzvláště postiženy. 
+Pandemie zasáhla všechny státy, ale státy s velkým cestovním ruchem a pohostinstvím, jako je **Nevada (30,6 %)**, **Michigan (22,6 %)** a **Hawaii (14,1 %)**, byly obzvláště postiženy. 
 
 <br>
-
-## Vývoj nezaměstnanosti v jednotlivých státech
 
 ```{r plots, results='asis'}
 for (i in seq_along(complete_plots)) {
